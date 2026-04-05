@@ -1,0 +1,18 @@
+[project]
+name = "order-service"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.18.4",
+    "asyncpg>=0.31.0",
+    "dependency-injector>=4.49.0",
+    "fastapi>=0.135.2",
+    "httpx>=0.28.1",
+    "pre-commit>=4.5.1",
+    "pydantic-settings>=2.13.1",
+    "ruff>=0.15.8",
+    "sentry-sdk>=2.57.0",
+    "sqlalchemy[asyncio]>=2.0.48",
+    "uvicorn>=0.42.0",
+]

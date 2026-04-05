@@ -16,7 +16,7 @@ class OrderDTO(BaseModel):
     user_id: str
     quantity: int = Field(ge=1)
     item_id: UUID
-    idempotency_key: UUID
+    idempotency_key: str | None = None
 
 
 class CreateOrderUseCase:
@@ -28,11 +28,12 @@ class CreateOrderUseCase:
         log.info("Creating order: %s", order)
         async with self._unit_of_work() as uow:
             try:
-                existing_order = await uow.orders.get_by_idempotency_key(
-                    order.idempotency_key
-                )
-                if existing_order:
-                    return existing_order
+                if order.idempotency_key:
+                    existing_order = await uow.orders.get_by_idempotency_key(
+                        order.idempotency_key
+                    )
+                    if existing_order:
+                        return existing_order
                 sufficient_qty = await self._catalog_client.check_stock(
                     order.item_id, order.quantity
                 )

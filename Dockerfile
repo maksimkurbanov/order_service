@@ -3,6 +3,8 @@ FROM astral/uv:0.9.2-python3.14-alpine
 RUN addgroup -g 1000 appgroup && \
     adduser -D -u 1000 -G appgroup appuser
 
+RUN apk add --no-cache postgresql-client
+
 WORKDIR /app
 RUN chown appuser:appgroup /app
 

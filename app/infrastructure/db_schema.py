@@ -32,7 +32,7 @@ class OrderTable(Base):
         CheckConstraint("quantity >= 1", name="quantity_ge_1"),
     )
     item_id: Mapped[UUID] = mapped_column(Uuid)
-    idempotency_key: Mapped[UUID] = mapped_column(Uuid)
+    idempotency_key: Mapped[str] = mapped_column(String, nullable=True, unique=True)
     status: Mapped[OrderStatusEnum] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(
         saDateTime, server_default=func.timezone("UTC", func.now())

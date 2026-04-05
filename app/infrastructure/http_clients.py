@@ -16,7 +16,7 @@ class CatalogServiceClient:
     def _build_url(path_params: tuple) -> str:
         """Build and return Capashino Catalog Service API URL string"""
         if path_params:
-            path_params = "/".join(map(str, path_params)) + "/"
+            path_params = "/".join(map(str, path_params))
         return f"{settings.CAPASHINO_URL.rstrip('/')}/api/catalog/{path_params}"
 
     async def get_item(self, item_id: UUID) -> Item:

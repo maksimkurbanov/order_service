@@ -16,4 +16,5 @@ COPY --chown=appuser . /app
 
 USER appuser
 
+
 CMD ["sh", "-c", "uv run alembic upgrade head && uv run python -m bin.main"]

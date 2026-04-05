@@ -29,10 +29,11 @@ class OrderRepository:
     @staticmethod
     def _construct(row: ScalarResult | None) -> Order:
         if not row:
-            raise DoesNotExist
+            raise DoesNotExist("Order does not exist")
         return Order.model_validate(row)
 
     async def create(self, order: CreateDTO) -> Order:
+
         stmt = insert(OrderTable).values(**order.model_dump()).returning(OrderTable)
         result = await self._session.execute(stmt)
 
@@ -44,7 +45,7 @@ class OrderRepository:
 
         return self._construct(result.scalars().first())
 
-    async def get_by_idempotency_key(self, idempotency_key: UUID) -> Order:
+    async def get_by_idempotency_key(self, idempotency_key: str) -> Order:
         stmt = select(OrderTable).filter(OrderTable.idempotency_key == idempotency_key)
         result = await self._session.execute(stmt)
 

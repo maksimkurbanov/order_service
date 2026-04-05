@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 
 from app.domain.models import OrderStatusEnum, Order
 from app.infrastructure.http_clients import CatalogServiceClient
-from app.infrastructure.repositories import OrderRepository
+from app.infrastructure.repositories import OrderRepository, DoesNotExist
 from app.infrastructure.unit_of_work import UnitOfWork
 from app.utils import logging
 
@@ -29,11 +29,18 @@ class CreateOrderUseCase:
         async with self._unit_of_work() as uow:
             try:
                 if order.idempotency_key:
-                    existing_order = await uow.orders.get_by_idempotency_key(
-                        order.idempotency_key
-                    )
-                    if existing_order:
-                        return existing_order
+                    try:
+                        existing_order = await uow.orders.get_by_idempotency_key(
+                            order.idempotency_key
+                        )
+                        if existing_order:
+                            return existing_order
+                    except DoesNotExist:
+                        log.debug(
+                            "Idempotency key %s not in DB, proceeding with order creation",
+                            order,
+                        )
+                        pass
                 sufficient_qty = await self._catalog_client.check_stock(
                     order.item_id, order.quantity
                 )

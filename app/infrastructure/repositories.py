@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import insert, ScalarResult, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,8 +20,15 @@ class OrderRepository:
         user_id: str
         quantity: int
         item_id: UUID
-        idempotency_key: UUID
+        idempotency_key: str | UUID | None = None
         status: OrderStatusEnum
+
+        @field_validator("idempotency_key")
+        @classmethod
+        def idempotency_key_validator(cls, v: UUID | str | None) -> str | None:
+            if isinstance(v, UUID):
+                return str(v)
+            return v
 
     def __init__(self, session: AsyncSession):
         self._session = session

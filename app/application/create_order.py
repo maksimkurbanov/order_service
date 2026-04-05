@@ -45,7 +45,9 @@ class CreateOrderUseCase:
                     order.item_id, order.quantity
                 )
                 if not sufficient_qty:
-                    return JSONResponse(status_code=400, detail="Insufficient stock")
+                    return JSONResponse(
+                        status_code=400, content={"message": "Insufficient stock"}
+                    )
                 order = await uow.orders.create(
                     OrderRepository.CreateDTO(
                         **order.model_dump(), status=OrderStatusEnum.NEW

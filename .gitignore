@@ -12,6 +12,7 @@ __pycache__/
 .ruff_cache
 *.so
 */idea/
+./.idea
 ./idea/*
 # Distribution / packaging
 .Python

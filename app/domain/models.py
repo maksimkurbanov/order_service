@@ -10,7 +10,21 @@ class OrderStatusEnum(StrEnum):
     NEW = "NEW"
     PAYED = "PAYED"
     SHIPPED = "SHIPPED"
-    CANCELED = "CANCELED"
+    CANCELLED = "CANCELLED"
+
+    @classmethod
+    def from_payment_status(cls, payment_status: str) -> OrderStatusEnum:
+        mapping = {
+            "succeeded": cls.PAYED,
+            "failed": cls.CANCELLED,
+        }
+        return mapping.get(payment_status)
+
+
+class PaymentStatusEnum(StrEnum):
+    PENDING = "PENDING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
 
 
 class Order(BaseModel):
@@ -31,3 +45,16 @@ class Item(BaseModel):
     price: Decimal
     available_qty: int
     created_at: datetime
+
+
+class Payment(BaseModel):
+    id: UUID
+    user_id: UUID
+    order_id: UUID
+    amount: str
+    status: PaymentStatusEnum
+    idempotency_key: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

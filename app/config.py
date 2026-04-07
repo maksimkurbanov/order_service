@@ -31,5 +31,7 @@ class Settings(BaseSettings):
     OUTBOX_EVENTS_LIFESPAN_HOURS: int = 48
     IDEMPOTENCY_KEY_LIFESPAN_HOURS: int = 48
 
+    CALLBACK_URL: str
+
 
 settings = Settings()

@@ -7,7 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from app.application.container import ApplicationContainer
-from app.application.exception_handlers import validation_exception_handler
+from app.application.exceptions import ApplicationError
+from app.presentation.exception_handlers import (
+    validation_exception_handler,
+    application_exception_handler,
+)
 from app.config import settings
 from app.presentation.api import router
 from app.presentation import api
@@ -25,6 +29,7 @@ def build_api(container: ApplicationContainer):
     app = FastAPI()
     app.include_router(router)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(ApplicationError, application_exception_handler)
     container.wire(modules=[api])
     return app
 

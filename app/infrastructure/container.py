@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
 )
 
-from app.infrastructure.http_clients import CatalogServiceClient
+from app.infrastructure.http_clients import CatalogServiceClient, PaymentsServiceClient
 from app.infrastructure.unit_of_work import UnitOfWork
 from app.utils import logging
 
@@ -30,3 +30,4 @@ class InfrastructureContainer(containers.DeclarativeContainer):
         UnitOfWork, session_factory=session_factory
     )
     catalog_client = providers.Singleton[CatalogServiceClient](CatalogServiceClient)
+    payments_client = providers.Singleton[PaymentsServiceClient](PaymentsServiceClient)

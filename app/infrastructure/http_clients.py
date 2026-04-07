@@ -18,7 +18,7 @@ class PaymentCreateRequest(BaseModel):
     callback_url: str
     idempotency_key: str = None
 
-    @field_validator("idempotency_key")
+    @field_validator("idempotency_key", mode="before")
     @classmethod
     def idempotency_key_validator(cls, v):
         if not isinstance(v, str):
@@ -32,7 +32,7 @@ class PaymentResponse(BaseModel):
     order_id: UUID
     amount: str
     status: str
-    idempotency_key: str = None
+    idempotency_key: str | UUID = None
     created_at: datetime
 
 
@@ -96,4 +96,5 @@ class PaymentsServiceClient(CapashinoServiceClient):
         )
         if response.is_error:
             response.raise_for_status()
+        log.debug("Create Payment response: %s", response.json())
         return PaymentResponse(**response.json())

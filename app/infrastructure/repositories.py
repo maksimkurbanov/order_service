@@ -43,10 +43,13 @@ class BaseRepository:
 
     def _construct(self, row: ScalarResult | None) -> DomainModel:
         if not row:
-            raise EntityNotFoundError(f"{self._domain_model} does not exist")
+            raise EntityNotFoundError("Entity does not exist")
         return self._domain_model.model_validate(row)
 
     async def create(self, obj: CreateDTO) -> DomainModel:
+        log.debug(
+            "Creating record for %s with data: %s", self._domain_model.__name__, obj
+        )
         stmt = (
             insert(self._table_name)
             .values(**obj.model_dump())
@@ -126,7 +129,7 @@ class OrderRepository(BaseRepository):
         idempotency_key: str | UUID | None = None
         status: OrderStatusEnum
 
-        @field_validator("idempotency_key")
+        @field_validator("idempotency_key", mode="before")
         @classmethod
         def normalize_idempotency_key(cls, v: UUID | str | None) -> str | None:
             if isinstance(v, UUID):
@@ -147,20 +150,27 @@ class PaymentRepository(BaseRepository):
         order_id: UUID
         amount: str
         status: PaymentStatusEnum
-        idempotency_key: UUID | None
+        idempotency_key: UUID | str | None
         created_at: datetime
 
-        @field_validator("status")
+        @field_validator("status", mode="before")
         @classmethod
         def normalize_status(cls, v) -> str:
             if isinstance(v, str):
                 return v.upper()
             return v
 
+        @field_validator("idempotency_key", mode="before")
+        @classmethod
+        def normalize_idempotency_key(cls, v: UUID | str | None) -> str | None:
+            if isinstance(v, UUID):
+                return str(v)
+            return v
+
     class UpdateDTO(BaseModel):
         status: PaymentStatusEnum
 
-        @field_validator("status")
+        @field_validator("status", mode="before")
         @classmethod
         def normalize_status(cls, v) -> str:
             if isinstance(v, str):

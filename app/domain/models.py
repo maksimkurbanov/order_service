@@ -53,8 +53,8 @@ class Payment(BaseModel):
     order_id: UUID
     amount: str
     status: PaymentStatusEnum
-    idempotency_key: str
+    idempotency_key: str | UUID
     created_at: datetime
-    updated_at: datetime
+    update_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

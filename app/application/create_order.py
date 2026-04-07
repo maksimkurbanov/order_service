@@ -74,11 +74,14 @@ class CreateOrderUseCase:
                     payment = await self._payments_client.create_payment(
                         new_order, amount
                     )
-                    uow.payments.create(
+                    await uow.payments.create(
                         PaymentRepository.CreateDTO(**payment.model_dump())
                     )
                 except Exception as e:
-                    new_order.status = OrderStatusEnum.CANCELLED
+                    await uow.orders.update(
+                        new_order,
+                        OrderRepository.UpdateDTO(status=OrderStatusEnum.CANCELLED),
+                    )
                     log.error("Failed to create payment: %s", str(e))
 
                 await uow.commit()

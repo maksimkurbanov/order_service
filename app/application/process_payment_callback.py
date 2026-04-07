@@ -28,13 +28,13 @@ class ProcessPaymentCallbackUseCase:
             try:
                 existing_payment = await uow.payments.get_by_id((payment.payment_id,))
                 if existing_payment.status != payment.status:
-                    await uow.payments.update(
-                        payment.payment_id,
+                    existing_payment = await uow.payments.update(
+                        existing_payment,
                         PaymentRepository.UpdateDTO(status=payment.status),
                     )
                     await uow.orders.update(
-                        payment.order_id,
-                        OrderRepository.UpdateDTO(
+                        target=await uow.orders.get_by_id((payment.order_id,)),
+                        obj_update=OrderRepository.UpdateDTO(
                             status=OrderStatusEnum.from_payment_status(payment.status)
                         ),
                     )

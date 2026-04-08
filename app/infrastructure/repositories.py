@@ -1,10 +1,10 @@
 from abc import abstractmethod, ABC
 from datetime import datetime
-from typing import TypeVar, Sequence
+from typing import TypeVar, Sequence, Any
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
-from sqlalchemy import insert, ScalarResult, select, update, inspect
+from pydantic import BaseModel, field_validator, model_validator
+from sqlalchemy import insert, ScalarResult, select, update, inspect, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.exceptions import EntityNotFoundError
@@ -13,8 +13,14 @@ from app.domain.models import (
     PaymentStatusEnum,
     OutboxStatusEnum,
     EventTypeEnum,
+    InboxStatusEnum,
 )
-from app.infrastructure.db_schema import OrderTable, PaymentTable, OutboxTable
+from app.infrastructure.db_schema import (
+    OrderTable,
+    PaymentTable,
+    OutboxTable,
+    InboxTable,
+)
 from app.utils import logging
 
 log = logging.get_logger(__name__)
@@ -125,6 +131,29 @@ class BaseRepository(ABC):
         log.debug("Result for get_by_idempotency_key: %s", obj)
         return obj
 
+    async def get_many_with_lock(
+        self,
+        target_ids: list[tuple],
+        limit: int = 50,
+    ) -> Sequence[DomainModel]:
+        """
+        Fetch all records satisfying provided args and kwargs filtering,
+        with exclusive lock on selected rows, while skipping already
+        locked rows, to ensure data integrity in concurrent environment.
+        Respects given offset and limit.
+        Return list of ORMModel objects or an empty list
+        """
+        stmt = (
+            select(self._table_name)
+            .filter(tuple_(*self._id_cols).in_(target_ids))
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        result = await self._session.execute(stmt)
+        objs = tuple(self._construct(row) for row in result.scalars().all())
+        log.debug("Result for get_many_with_lock: %s", objs)
+        return objs
+
 
 class OrderRepository(BaseRepository):
     class CreateDTO(BaseModel):
@@ -201,11 +230,54 @@ class OutboxRepository(BaseRepository):
     def _get_table_name(self) -> ORMModel:
         return OutboxTable
 
-    async def get_pending(self, limit: int = 50) -> Sequence[ScalarResult]:
+    async def get_pending(self, limit: int = 50) -> Sequence[DomainModel]:
         stmt = (
             select(self._table_name)
             .filter(OutboxTable.status == OutboxStatusEnum.PENDING)
             .order_by(OutboxTable.created_at)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        result = await self._session.execute(stmt)
+        pending = tuple(self._construct(row) for row in result.scalars().all())
+        return pending
+
+
+class InboxRepository(BaseRepository):
+    class CreateDTO(BaseModel):
+        event_type: EventTypeEnum
+        order_id: UUID
+        item_id: UUID
+        quantity: int
+        payload: dict
+        status: InboxStatusEnum
+        retry_count: int
+
+        @model_validator(mode="before")
+        @classmethod
+        def extract_payload(cls, values: dict[str, Any]) -> dict[str, Any]:
+            known_fields = {"event_type", "order_id", "item_id", "quantity"}
+            payload = {k: v for k, v in values.items() if k not in known_fields}
+            values["payload"] = payload
+            return values
+
+        @field_validator("event_type", mode="before")
+        @classmethod
+        def normalize_event_type(cls, v: str) -> str:
+            return v.upper()
+
+    class UpdateDTO(BaseModel):
+        event_type: EventTypeEnum = None
+        status: InboxStatusEnum = None
+
+    def _get_table_name(self) -> ORMModel:
+        return InboxTable
+
+    async def get_pending(self, limit: int = 50) -> Sequence[ScalarResult]:
+        stmt = (
+            select(self._table_name)
+            .filter(InboxTable.status == InboxStatusEnum.PENDING)
+            .order_by(InboxTable.created_at)
             .limit(limit)
             .with_for_update(skip_locked=True)
         )

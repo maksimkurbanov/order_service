@@ -25,12 +25,9 @@ class Settings(BaseSettings):
     LMS_API_KEY: str
     CAPASHINO_URL: str
     KAFKA_BOOTSTRAP_SERVERS: str
-    KAFKA_TOPIC: str
+    KAFKA_OUTBOX_TOPIC: str
+    KAFKA_INBOX_TOPIC: str
     SENTRY_DSN: str
-
-    OUTBOX_MAX_RETRIES: int = 3
-    OUTBOX_EVENTS_LIFESPAN_HOURS: int = 48
-    IDEMPOTENCY_KEY_LIFESPAN_HOURS: int = 48
 
     CALLBACK_URL: str
     OUTBOX_MAX_RETRIES: int

@@ -16,6 +16,8 @@ from app.config import settings
 from app.presentation.api import router
 from app.presentation import api
 from app.presentation.container import PresentationContainer
+from app.presentation.inbox_worker import InboxWorker
+from app.presentation.inbox_writer import InboxWriter
 from app.presentation.outbox_worker import OutboxWorker
 
 sentry_sdk.init(
@@ -40,6 +42,8 @@ async def main():
 
     app = build_api(presentation_container.application)
     outbox_worker: OutboxWorker = presentation_container.outbox_worker()
+    inbox_writer: InboxWriter = presentation_container.inbox_writer()
+    inbox_worker: InboxWorker = presentation_container.inbox_worker()
 
     api_task = asyncio.create_task(
         uvicorn.Server(
@@ -47,8 +51,12 @@ async def main():
         ).serve()
     )
     outbox_worker_task = asyncio.create_task(outbox_worker.run())
+    inbox_writer_task = asyncio.create_task(inbox_writer.run())
+    inbox_worker_task = asyncio.create_task(inbox_worker.run())
 
-    await asyncio.gather(api_task, outbox_worker_task)
+    await asyncio.gather(
+        api_task, outbox_worker_task, inbox_writer_task, inbox_worker_task
+    )
 
 
 if __name__ == "__main__":

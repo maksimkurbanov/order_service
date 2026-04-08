@@ -14,6 +14,7 @@ from sqlalchemy import (
     TypeDecorator,
     ForeignKey,
     Index,
+    JSON,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
 from sqlalchemy.testing.schema import mapped_column
@@ -23,6 +24,7 @@ from app.domain.models import (
     PaymentStatusEnum,
     OutboxStatusEnum,
     EventTypeEnum,
+    InboxStatusEnum,
 )
 
 
@@ -120,6 +122,37 @@ class OutboxTable(Base):
     __table_args__ = (
         Index(
             "ix_outbox_status",
+            "status",
+            "created_at",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+    )
+
+
+class InboxTable(Base):
+    __tablename__ = "inbox"
+
+    event_type: Mapped[EventTypeEnum] = mapped_column(String)
+    order_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("order.id"), primary_key=True
+    )
+    item_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    quantity: Mapped[int] = mapped_column(Integer, primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON)
+    status: Mapped[InboxStatusEnum] = mapped_column(String)
+    retry_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        saDateTime, server_default=func.timezone("UTC", func.now())
+    )
+    update_at: Mapped[datetime] = mapped_column(
+        saDateTime,
+        server_default=func.timezone("UTC", func.now()),
+        server_onupdate=func.timezone("UTC", func.now()),
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_inbox_status",
             "status",
             "created_at",
             postgresql_where=text("status = 'PENDING'"),

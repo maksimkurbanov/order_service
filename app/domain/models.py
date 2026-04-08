@@ -38,6 +38,11 @@ class OutboxStatusEnum(StrEnum):
     SENT = "SENT"
 
 
+class InboxStatusEnum(StrEnum):
+    PENDING = "PENDING"
+    PROCESSED = "PROCESSED"
+
+
 class Order(BaseModel):
     id: UUID
     user_id: str
@@ -78,6 +83,20 @@ class Outbox(BaseModel):
     item_id: UUID
     quantity: int
     status: OutboxStatusEnum
+    retry_count: int
+    created_at: datetime
+    update_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Inbox(BaseModel):
+    event_type: EventTypeEnum
+    order_id: UUID
+    item_id: UUID
+    quantity: int
+    payload: dict
+    status: InboxStatusEnum
     retry_count: int
     created_at: datetime
     update_at: datetime

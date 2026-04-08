@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.infrastructure.http_clients import CatalogServiceClient, PaymentsServiceClient
+from app.infrastructure.kafka_producer import KafkaProducer
 from app.infrastructure.unit_of_work import UnitOfWork
 from app.utils import logging
 
@@ -21,6 +22,7 @@ class InfrastructureContainer(containers.DeclarativeContainer):
     async_engine = providers.Singleton[AsyncEngine](
         create_async_engine, config.POSTGRES_CONNECTION_STRING
     )
+    outbox_max_retries = config.OUTBOX_MAX_RETRIES
     session_factory: Callable[..., AsyncSession] = providers.Factory(
         async_sessionmaker,
         async_engine,
@@ -31,3 +33,8 @@ class InfrastructureContainer(containers.DeclarativeContainer):
     )
     catalog_client = providers.Singleton[CatalogServiceClient](CatalogServiceClient)
     payments_client = providers.Singleton[PaymentsServiceClient](PaymentsServiceClient)
+    kafka_producer = providers.Singleton[KafkaProducer](
+        KafkaProducer,
+        config.KAFKA_BOOTSTRAP_SERVERS,
+        config.KAFKA_TOPIC,
+    )

@@ -2,8 +2,18 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-from app.domain.models import Payment, OrderStatusEnum
-from app.infrastructure.repositories import PaymentRepository, OrderRepository
+from app.domain.models import (
+    Payment,
+    OrderStatusEnum,
+    PaymentStatusEnum,
+    EventTypeEnum,
+    OutboxStatusEnum,
+)
+from app.infrastructure.repositories import (
+    PaymentRepository,
+    OrderRepository,
+    OutboxRepository,
+)
 from app.infrastructure.unit_of_work import UnitOfWork
 from app.utils import logging
 
@@ -32,12 +42,24 @@ class ProcessPaymentCallbackUseCase:
                         existing_payment,
                         PaymentRepository.UpdateDTO(status=payment.status),
                     )
+                    order = await uow.orders.get_by_id((payment.order_id,))
                     await uow.orders.update(
-                        target=await uow.orders.get_by_id((payment.order_id,)),
+                        target=order,
                         obj_update=OrderRepository.UpdateDTO(
                             status=OrderStatusEnum.from_payment_status(payment.status)
                         ),
                     )
+                    if payment.status.upper() == PaymentStatusEnum.SUCCEEDED:
+                        await uow.outbox.create(
+                            OutboxRepository.CreateDTO(
+                                event_type=EventTypeEnum.PAID,
+                                order_id=payment.order_id,
+                                item_id=order.item_id,
+                                quantity=order.quantity,
+                                status=OutboxStatusEnum.PENDING,
+                                retry_count=0,
+                            )
+                        )
                     await uow.commit()
                 return existing_payment
             except Exception as e:

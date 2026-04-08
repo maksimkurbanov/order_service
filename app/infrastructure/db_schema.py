@@ -13,11 +13,17 @@ from sqlalchemy import (
     DECIMAL,
     TypeDecorator,
     ForeignKey,
+    Index,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
 from sqlalchemy.testing.schema import mapped_column
 
-from app.domain.models import OrderStatusEnum, PaymentStatusEnum
+from app.domain.models import (
+    OrderStatusEnum,
+    PaymentStatusEnum,
+    OutboxStatusEnum,
+    EventTypeEnum,
+)
 
 
 class Base(DeclarativeBase):
@@ -88,3 +94,34 @@ class PaymentTable(Base):
     )
 
     order: Mapped["OrderTable"] = relationship(back_populates="payment")
+
+
+class OutboxTable(Base):
+    __tablename__ = "outbox"
+
+    idempotency_key: Mapped[UUID] = mapped_column(
+        Uuid, server_default=text("gen_random_uuid()"), primary_key=True
+    )
+    event_type: Mapped[EventTypeEnum] = mapped_column(String)
+    order_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("order.id"))
+    item_id: Mapped[UUID] = mapped_column(Uuid)
+    quantity: Mapped[int] = mapped_column(Integer)
+    status: Mapped[OutboxStatusEnum] = mapped_column(String)
+    retry_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        saDateTime, server_default=func.timezone("UTC", func.now())
+    )
+    update_at: Mapped[datetime] = mapped_column(
+        saDateTime,
+        server_default=func.timezone("UTC", func.now()),
+        server_onupdate=func.timezone("UTC", func.now()),
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_outbox_status",
+            "status",
+            "created_at",
+            postgresql_where=text("status = 'PENDING'"),
+        ),
+    )

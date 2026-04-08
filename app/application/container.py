@@ -2,6 +2,7 @@ from dependency_injector import containers, providers
 
 from app.application.create_order import CreateOrderUseCase
 from app.application.get_order import GetOrderUseCase
+from app.application.process_outbox import ProcessOutboxUseCase
 from app.application.process_payment_callback import ProcessPaymentCallbackUseCase
 from app.infrastructure.container import InfrastructureContainer
 
@@ -27,3 +28,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
     process_payment_callback_use_case = providers.Singleton[
         ProcessPaymentCallbackUseCase
     ](ProcessPaymentCallbackUseCase, unit_of_work=infrastructure_container.unit_of_work)
+
+    process_outbox_use_case = providers.Singleton[ProcessOutboxUseCase](
+        ProcessOutboxUseCase,
+        unit_of_work=infrastructure_container.unit_of_work,
+        kafka_producer=infrastructure_container.kafka_producer,
+        max_retries=infrastructure_container.outbox_max_retries,
+    )

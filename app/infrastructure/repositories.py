@@ -1,6 +1,6 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from datetime import datetime
-from typing import TypeVar
+from typing import TypeVar, Sequence
 from uuid import UUID
 
 from pydantic import BaseModel, field_validator
@@ -8,8 +8,13 @@ from sqlalchemy import insert, ScalarResult, select, update, inspect
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.exceptions import EntityNotFoundError
-from app.domain.models import OrderStatusEnum, PaymentStatusEnum
-from app.infrastructure.db_schema import OrderTable, PaymentTable
+from app.domain.models import (
+    OrderStatusEnum,
+    PaymentStatusEnum,
+    OutboxStatusEnum,
+    EventTypeEnum,
+)
+from app.infrastructure.db_schema import OrderTable, PaymentTable, OutboxTable
 from app.utils import logging
 
 log = logging.get_logger(__name__)
@@ -19,7 +24,7 @@ DomainModel = TypeVar("DomainModel")
 ORMModel = TypeVar("ORMModel")
 
 
-class BaseRepository:
+class BaseRepository(ABC):
     class CreateDTO(BaseModel):
         pass
 
@@ -179,3 +184,31 @@ class PaymentRepository(BaseRepository):
 
     def _get_table_name(self) -> ORMModel:
         return PaymentTable
+
+
+class OutboxRepository(BaseRepository):
+    class CreateDTO(BaseModel):
+        event_type: EventTypeEnum
+        order_id: UUID
+        item_id: UUID
+        quantity: int
+        status: OutboxStatusEnum
+        retry_count: int
+
+    class UpdateDTO(BaseModel):
+        status: OutboxStatusEnum
+
+    def _get_table_name(self) -> ORMModel:
+        return OutboxTable
+
+    async def get_pending(self, limit: int = 50) -> Sequence[ScalarResult]:
+        stmt = (
+            select(self._table_name)
+            .filter(OutboxTable.status == OutboxStatusEnum.PENDING)
+            .order_by(OutboxTable.created_at)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        result = await self._session.execute(stmt)
+        pending = tuple(self._construct(row) for row in result.scalars().all())
+        return pending

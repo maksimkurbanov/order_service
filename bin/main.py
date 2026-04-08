@@ -16,7 +16,7 @@ from app.config import settings
 from app.presentation.api import router
 from app.presentation import api
 from app.presentation.container import PresentationContainer
-
+from app.presentation.outbox_worker import OutboxWorker
 
 sentry_sdk.init(
     dsn=settings.SENTRY_DSN,
@@ -39,14 +39,16 @@ async def main():
     presentation_container.config.from_pydantic(settings=settings, required=True)
 
     app = build_api(presentation_container.application)
+    outbox_worker: OutboxWorker = presentation_container.outbox_worker()
 
     api_task = asyncio.create_task(
         uvicorn.Server(
             uvicorn.Config(app, host=settings.SERVER_HOST, port=settings.SERVER_PORT)
         ).serve()
     )
+    outbox_worker_task = asyncio.create_task(outbox_worker.run())
 
-    await asyncio.gather(api_task)
+    await asyncio.gather(api_task, outbox_worker_task)
 
 
 if __name__ == "__main__":

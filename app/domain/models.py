@@ -8,14 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class OrderStatusEnum(StrEnum):
     NEW = "NEW"
-    PAYED = "PAYED"
+    PAID = "PAID"
     SHIPPED = "SHIPPED"
     CANCELLED = "CANCELLED"
 
     @classmethod
     def from_payment_status(cls, payment_status: str) -> OrderStatusEnum:
         mapping = {
-            "succeeded": cls.PAYED,
+            "succeeded": cls.PAID,
             "failed": cls.CANCELLED,
         }
         return mapping.get(payment_status)
@@ -25,6 +25,17 @@ class PaymentStatusEnum(StrEnum):
     PENDING = "PENDING"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
+
+
+class EventTypeEnum(StrEnum):
+    PAID = "ORDER.PAID"
+    SHIPPED = "ORDER.SHIPPED"
+    CANCELLED = "ORDER.CANCELLED"
+
+
+class OutboxStatusEnum(StrEnum):
+    PENDING = "PENDING"
+    SENT = "SENT"
 
 
 class Order(BaseModel):
@@ -54,6 +65,20 @@ class Payment(BaseModel):
     amount: str
     status: PaymentStatusEnum
     idempotency_key: str | UUID
+    created_at: datetime
+    update_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Outbox(BaseModel):
+    idempotency_key: UUID
+    event_type: EventTypeEnum
+    order_id: UUID
+    item_id: UUID
+    quantity: int
+    status: OutboxStatusEnum
+    retry_count: int
     created_at: datetime
     update_at: datetime
 

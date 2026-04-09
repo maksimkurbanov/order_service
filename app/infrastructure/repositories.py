@@ -134,6 +134,7 @@ class BaseRepository(ABC):
     async def get_many_with_lock(
         self,
         target_ids: list[tuple],
+        order_by: str,
         limit: int = 50,
     ) -> Sequence[DomainModel]:
         """
@@ -149,6 +150,13 @@ class BaseRepository(ABC):
             .limit(limit)
             .with_for_update(skip_locked=True)
         )
+
+        if order_by:
+            order_col = getattr(self._table_name, order_by, None)
+            if order_col is None:
+                raise ValueError(f"Invalid order_by column: {order_by}")
+            stmt = stmt.order_by(order_col)
+
         result = await self._session.execute(stmt)
         objs = tuple(self._construct(row) for row in result.scalars().all())
         log.debug("Result for get_many_with_lock: %s", objs)

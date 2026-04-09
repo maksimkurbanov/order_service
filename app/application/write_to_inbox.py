@@ -32,9 +32,9 @@ class WriteToInboxUseCase:
                 inc_event_type = message.value["event_type"].upper()
                 existing_msg = await uow.inbox.get_by_id(
                     (
-                        inc_event_type,
                         message.value["order_id"],
                         message.value["item_id"],
+                        message.value["quantity"],
                     )
                 )
                 if existing_msg and inc_event_type != existing_msg.event_type:
@@ -53,4 +53,4 @@ class WriteToInboxUseCase:
                 await uow.commit()
                 await consumer.commit()
             except Exception as e:
-                log.error("Error while handling incoming message", e)
+                log.error("Error while handling incoming message: %s", e)

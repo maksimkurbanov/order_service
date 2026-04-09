@@ -17,8 +17,16 @@ class ProcessInboxUseCase:
                 return
 
             order_ids = [tuple(msg.order_id) for msg in messages]
-            orders = await uow.orders.get_many_with_lock(order_ids)
-            for message, order in zip(messages, orders):
+            orders = await uow.orders.get_many_with_lock(
+                order_ids, order_by="created_at"
+            )
+            order_map = {order.id: order for order in orders}
+
+            for message in messages:
+                order = order_map.get(message.order_id)
+                if not order:
+                    continue
+
                 async with uow.session.begin_nested():
                     try:
                         log.debug("Processing inbox message: %s", message)
@@ -29,14 +37,15 @@ class ProcessInboxUseCase:
                         await uow.orders.update(
                             order,
                             OrderRepository.UpdateDTO(
-                                status=OrderStatusEnum.message.value[
-                                    "event_type"
-                                ].upper()
+                                status=OrderStatusEnum(
+                                    message.value["event_type"].split(".")[1]
+                                ),
                             ),
                         )
                     except Exception as e:
                         log.warning(
-                            "Inbox message processing failed for event: %s",
+                            "Inbox message processing failed: %s",
                             e,
                         )
+                        raise
             await uow.commit()

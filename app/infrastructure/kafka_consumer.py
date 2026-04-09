@@ -15,7 +15,7 @@ class KafkaConsumer(AIOKafkaConsumer):
             bootstrap_servers=self._bootstrap_servers,
             enable_auto_commit=False,
             value_deserializer=lambda value: json.loads(value.decode("utf-8")),
-            key_deserializer=lambda value: json.loads(value.decode("utf-8")),
+            key_deserializer=lambda key: key.decode("utf-8") if key else None,
         )
         await self._consumer.start()
 

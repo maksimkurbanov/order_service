@@ -48,8 +48,8 @@ class ProcessOutboxUseCase:
                                 await kp.send_message(
                                     message=OutboxDTO(
                                         **event.model_dump(mode="json")
-                                    ).model_dump(),
-                                    key=event.idempotency_key,
+                                    ).model_dump(mode="json"),
+                                    key=str(event.idempotency_key),
                                 )
                                 await uow.outbox.update(
                                     event,

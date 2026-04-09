@@ -22,6 +22,7 @@ class WriteToInboxUseCase:
         self._consumer = kafka_consumer
 
     async def __call__(self) -> None:
+
         async with self._unit_of_work() as uow, self._consumer as consumer:
             try:
                 message = await consumer.consume()

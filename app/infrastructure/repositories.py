@@ -7,7 +7,6 @@ from pydantic import BaseModel, field_validator, model_validator
 from sqlalchemy import insert, ScalarResult, select, update, inspect, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application.exceptions import EntityNotFoundError
 from app.domain.models import (
     OrderStatusEnum,
     PaymentStatusEnum,
@@ -52,9 +51,9 @@ class BaseRepository(ABC):
         pk_list = [column.name for column in inspect(self._table_name).primary_key]
         return pk_list
 
-    def _construct(self, row: ScalarResult | None) -> DomainModel:
+    def _construct(self, row: ScalarResult | None) -> DomainModel | None:
         if not row:
-            raise EntityNotFoundError("Entity does not exist")
+            return None
         return self._domain_model.model_validate(row)
 
     async def create(self, obj: CreateDTO) -> DomainModel:

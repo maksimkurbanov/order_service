@@ -37,7 +37,7 @@ class ProcessPaymentCallbackUseCase:
         async with self._unit_of_work() as uow:
             try:
                 existing_payment = await uow.payments.get_by_id((payment.payment_id,))
-                if existing_payment.status != payment.status:
+                if existing_payment and existing_payment.status != payment.status:
                     existing_payment = await uow.payments.update(
                         existing_payment,
                         PaymentRepository.UpdateDTO(status=payment.status),

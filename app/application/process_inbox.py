@@ -16,7 +16,7 @@ class ProcessInboxUseCase:
             if not messages:
                 return
 
-            order_ids = [tuple(msg.order_id) for msg in messages]
+            order_ids = [tuple([msg.order_id]) for msg in messages]
             orders = await uow.orders.get_many_with_lock(
                 order_ids, order_by="created_at"
             )

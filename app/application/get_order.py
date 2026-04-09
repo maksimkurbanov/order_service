@@ -1,3 +1,4 @@
+from app.application.exceptions import EntityNotFoundError
 from app.infrastructure.unit_of_work import UnitOfWork
 from app.utils import logging
 
@@ -10,8 +11,6 @@ class GetOrderUseCase:
 
     async def __call__(self, order_id):
         async with self._unit_of_work() as uow:
-            try:
-                return await uow.orders.get_by_id((order_id,))
-            except Exception as e:
-                log.error("Failed to get order: %s", str(e))
-                raise
+            order = await uow.orders.get_by_id((order_id,))
+            if not order:
+                raise EntityNotFoundError(f"Order with id {order_id} not found")

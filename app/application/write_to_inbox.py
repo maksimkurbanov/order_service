@@ -39,12 +39,12 @@ class WriteToInboxUseCase:
                     )
                 )
                 if existing_msg and inc_event_type != existing_msg.event_type:
-                    uow.inbox.update(
+                    await uow.inbox.update(
                         existing_msg,
                         InboxRepository.UpdateDTO(event_type=inc_event_type),
                     )
                 if not existing_msg:
-                    uow.inbox.create(
+                    await uow.inbox.create(
                         InboxRepository.CreateDTO(
                             **message.value,
                             status=InboxStatusEnum.PENDING,
@@ -52,6 +52,5 @@ class WriteToInboxUseCase:
                         )
                     )
                 await uow.commit()
-                await consumer.commit()
             except Exception as e:
                 log.error("Error while handling incoming message: %s", e)

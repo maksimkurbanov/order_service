@@ -38,7 +38,7 @@ class ProcessInboxUseCase:
                             order,
                             OrderRepository.UpdateDTO(
                                 status=OrderStatusEnum(
-                                    message.value["event_type"].split(".")[1]
+                                    message.event_type.split(".")[1]
                                 ),
                             ),
                         )

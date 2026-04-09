@@ -47,10 +47,10 @@ class OrderTable(Base):
     idempotency_key: Mapped[str] = mapped_column(String, nullable=True, unique=True)
     status: Mapped[OrderStatusEnum] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(
-        saDateTime, server_default=func.timezone("UTC", func.now())
+        saDateTime(timezone=True), server_default=func.timezone("UTC", func.now())
     )
     update_at: Mapped[datetime] = mapped_column(
-        saDateTime,
+        saDateTime(timezone=True),
         server_default=func.timezone("UTC", func.now()),
         server_onupdate=func.timezone("UTC", func.now()),
     )
@@ -88,9 +88,11 @@ class PaymentTable(Base):
     amount: Mapped[str] = mapped_column(StrToDecimal)
     status: Mapped[PaymentStatusEnum] = mapped_column(String)
     idempotency_key: Mapped[UUID] = mapped_column(Uuid, nullable=True, unique=True)
-    created_at: Mapped[datetime] = mapped_column(saDateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        saDateTime(timezone=True), server_default=func.timezone("UTC", func.now())
+    )
     update_at: Mapped[datetime] = mapped_column(
-        saDateTime,
+        saDateTime(timezone=True),
         server_default=func.timezone("UTC", func.now()),
         server_onupdate=func.timezone("UTC", func.now()),
     )
@@ -111,10 +113,10 @@ class OutboxTable(Base):
     status: Mapped[OutboxStatusEnum] = mapped_column(String)
     retry_count: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
-        saDateTime, server_default=func.timezone("UTC", func.now())
+        saDateTime(timezone=True), server_default=func.timezone("UTC", func.now())
     )
     update_at: Mapped[datetime] = mapped_column(
-        saDateTime,
+        saDateTime(timezone=True),
         server_default=func.timezone("UTC", func.now()),
         server_onupdate=func.timezone("UTC", func.now()),
     )
@@ -142,10 +144,10 @@ class InboxTable(Base):
     status: Mapped[InboxStatusEnum] = mapped_column(String)
     retry_count: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
-        saDateTime, server_default=func.timezone("UTC", func.now())
+        saDateTime(timezone=True), server_default=func.timezone("UTC", func.now())
     )
     update_at: Mapped[datetime] = mapped_column(
-        saDateTime,
+        saDateTime(timezone=True),
         server_default=func.timezone("UTC", func.now()),
         server_onupdate=func.timezone("UTC", func.now()),
     )

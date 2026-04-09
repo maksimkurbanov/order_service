@@ -1,10 +1,9 @@
 from abc import abstractmethod, ABC
-from datetime import datetime
 from typing import TypeVar, Sequence, Any
 from uuid import UUID
 
 from pydantic import BaseModel, field_validator, model_validator
-from sqlalchemy import insert, ScalarResult, select, update, inspect, tuple_
+from sqlalchemy import insert, ScalarResult, select, update, inspect, tuple_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models import (
@@ -62,7 +61,7 @@ class BaseRepository(ABC):
         )
         stmt = (
             insert(self._table_name)
-            .values(**obj.model_dump())
+            .values(**obj.model_dump(exclude_unset=True))
             .returning(self._table_name)
         )
         result = await self._session.execute(stmt)
@@ -92,7 +91,7 @@ class BaseRepository(ABC):
         stmt = (
             update(self._table_name)
             .filter(*target_ids)
-            .values(**obj_update_data)
+            .values(**obj_update_data, update_at=func.timezone("UTC", func.now()))
             .returning(self._table_name)
         )
         result = await self._session.execute(stmt)
@@ -143,9 +142,11 @@ class BaseRepository(ABC):
         Respects given offset and limit.
         Return list of ORMModel objects or an empty list
         """
+        pk_cols = list(inspect(self._table_name).primary_key)
+
         stmt = (
             select(self._table_name)
-            .filter(tuple_(*self._id_cols).in_(target_ids))
+            .filter(tuple_(*pk_cols).in_(target_ids))
             .limit(limit)
             .with_for_update(skip_locked=True)
         )
@@ -192,7 +193,6 @@ class PaymentRepository(BaseRepository):
         amount: str
         status: PaymentStatusEnum
         idempotency_key: UUID | str | None
-        created_at: datetime
 
         @field_validator("status", mode="before")
         @classmethod
@@ -263,7 +263,14 @@ class InboxRepository(BaseRepository):
         @model_validator(mode="before")
         @classmethod
         def extract_payload(cls, values: dict[str, Any]) -> dict[str, Any]:
-            known_fields = {"event_type", "order_id", "item_id", "quantity"}
+            known_fields = {
+                "event_type",
+                "order_id",
+                "item_id",
+                "quantity",
+                "status",
+                "retry_count",
+            }
             payload = {k: v for k, v in values.items() if k not in known_fields}
             values["payload"] = payload
             return values

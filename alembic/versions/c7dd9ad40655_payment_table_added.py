@@ -31,10 +31,15 @@ def upgrade() -> None:
         sa.Column("amount", sa.DECIMAL(10, 2), nullable=False),
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("idempotency_key", sa.Uuid(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
         sa.Column(
             "update_at",
-            sa.DateTime(),
+            sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),

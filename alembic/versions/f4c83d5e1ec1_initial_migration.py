@@ -35,13 +35,13 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), nullable=False),
         sa.Column(
             "created_at",
-            sa.DateTime(),
+            sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
         sa.Column(
             "update_at",
-            sa.DateTime(),
+            sa.DateTime(timezone=True),
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),

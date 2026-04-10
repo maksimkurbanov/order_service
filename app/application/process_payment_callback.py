@@ -5,9 +5,7 @@ from pydantic import BaseModel
 from app.domain.models import (
     Payment,
     OrderStatusEnum,
-    PaymentStatusEnum,
     EventTypeEnum,
-    OutboxStatusEnum,
 )
 from app.infrastructure.repositories import (
     PaymentRepository,
@@ -43,23 +41,23 @@ class ProcessPaymentCallbackUseCase:
                         PaymentRepository.UpdateDTO(status=payment.status),
                     )
                     order = await uow.orders.get_by_id((payment.order_id,))
+                    inc_order_status = OrderStatusEnum.from_payment_status(
+                        payment.status
+                    )
                     await uow.orders.update(
                         target=order,
-                        obj_update=OrderRepository.UpdateDTO(
-                            status=OrderStatusEnum.from_payment_status(payment.status)
-                        ),
+                        obj_update=OrderRepository.UpdateDTO(status=inc_order_status),
                     )
-                    if payment.status.upper() == PaymentStatusEnum.SUCCEEDED:
-                        await uow.outbox.create(
-                            OutboxRepository.CreateDTO(
-                                event_type=EventTypeEnum.PAID,
-                                order_id=payment.order_id,
-                                item_id=order.item_id,
-                                quantity=order.quantity,
-                                status=OutboxStatusEnum.PENDING,
-                                retry_count=0,
-                            )
+                    await uow.outbox.create(
+                        OutboxRepository.CreateDTO(
+                            order_id=order.id,
+                            event_type=EventTypeEnum.from_payment_status(
+                                payment.status
+                            ),
+                            item_id=order.item_id,
+                            quantity=order.quantity,
                         )
+                    )
                     await uow.commit()
                 return existing_payment
             except Exception as e:

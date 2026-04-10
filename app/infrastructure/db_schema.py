@@ -103,11 +103,13 @@ class PaymentTable(Base):
 class OutboxTable(Base):
     __tablename__ = "outbox"
 
-    idempotency_key: Mapped[UUID] = mapped_column(
-        Uuid, server_default=text("gen_random_uuid()"), primary_key=True
+    order_id: Mapped[UUID] = mapped_column(
+        Uuid, ForeignKey("order.id"), primary_key=True
     )
-    event_type: Mapped[EventTypeEnum] = mapped_column(String)
-    order_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("order.id"))
+    event_type: Mapped[EventTypeEnum] = mapped_column(String, primary_key=True)
+    idempotency_key: Mapped[UUID] = mapped_column(
+        Uuid, server_default=text("gen_random_uuid()")
+    )
     item_id: Mapped[UUID] = mapped_column(Uuid)
     quantity: Mapped[int] = mapped_column(Integer)
     status: Mapped[OutboxStatusEnum] = mapped_column(String)
@@ -134,12 +136,12 @@ class OutboxTable(Base):
 class InboxTable(Base):
     __tablename__ = "inbox"
 
-    event_type: Mapped[EventTypeEnum] = mapped_column(String)
     order_id: Mapped[UUID] = mapped_column(
         Uuid, ForeignKey("order.id"), primary_key=True
     )
-    item_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
-    quantity: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_type: Mapped[EventTypeEnum] = mapped_column(String, primary_key=True)
+    item_id: Mapped[UUID] = mapped_column(Uuid)
+    quantity: Mapped[int] = mapped_column(Integer)
     payload: Mapped[dict] = mapped_column(JSON)
     status: Mapped[InboxStatusEnum] = mapped_column(String)
     retry_count: Mapped[int] = mapped_column(Integer)

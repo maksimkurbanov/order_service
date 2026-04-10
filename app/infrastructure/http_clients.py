@@ -36,6 +36,20 @@ class PaymentResponse(BaseModel):
     created_at: datetime
 
 
+class NotificationCreateRequest(BaseModel):
+    message: str
+    reference_id: UUID
+    idempotency_key: UUID
+
+
+class NotificationResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    message: str
+    reference_id: UUID
+    created_at: datetime
+
+
 class CapashinoServiceClient:
     def __init__(self):
         self._client = httpx.AsyncClient(
@@ -54,9 +68,11 @@ class CapashinoServiceClient:
 
     async def _log_request(self, request: Request) -> None:
         """Log request to Capashino Service API"""
-        log.debug(f"Request URL: {request.url}")
-        log.debug(f"Request Headers: {request.headers}")
-        log.debug(f"Request Body: {request.content.decode()}")
+        log.debug(
+            f"""Request URL: {request.url}
+            Request Headers: {request.headers}
+            Request Body: {request.content.decode()}"""
+        )
 
 
 class CatalogServiceClient(CapashinoServiceClient):
@@ -98,3 +114,34 @@ class PaymentsServiceClient(CapashinoServiceClient):
             response.raise_for_status()
         log.debug("Create Payment response: %s", response.json())
         return PaymentResponse(**response.json())
+
+
+class NotificationsServiceClient(CapashinoServiceClient):
+    def __init__(self):
+        super().__init__()
+        self._name = "notifications"
+
+    def _build_message(self, status: str):
+        msg_dict = {
+            "NEW": "NEW: Ваш заказ создан и ожидает оплаты.",
+            "PAID": "PAID: Ваш заказ успешно оплачен и готов к отправке.",
+            "SHIPPED": "SHIPPED: Ваш заказ отправлен в доставку.",
+            "CANCELLED": "CANCELLED: Ваш заказ отменен.",
+        }
+        return msg_dict[status]
+
+    async def send_notification(
+        self, status: str, order_id: UUID, idempotency_key: UUID
+    ) -> NotificationResponse:
+        response = await self._client.post(
+            self._build_url(),
+            json=NotificationCreateRequest(
+                message=self._build_message(status),
+                reference_id=order_id,
+                idempotency_key=idempotency_key,
+            ).model_dump(mode="json"),
+        )
+        if response.is_error:
+            response.raise_for_status()
+        log.debug("Send Notification response: %s", response.json())
+        return NotificationResponse(**response.json())

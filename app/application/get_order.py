@@ -14,3 +14,4 @@ class GetOrderUseCase:
             order = await uow.orders.get_by_id((order_id,))
             if not order:
                 raise EntityNotFoundError(f"Order with id {order_id} not found")
+            return order

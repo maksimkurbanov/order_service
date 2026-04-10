@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import (
     AsyncEngine,
 )
 
-from app.infrastructure.http_clients import CatalogServiceClient, PaymentsServiceClient
+from app.infrastructure.http_clients import (
+    CatalogServiceClient,
+    PaymentsServiceClient,
+    NotificationsServiceClient,
+)
 from app.infrastructure.kafka_consumer import KafkaConsumer
 from app.infrastructure.kafka_producer import KafkaProducer
 from app.infrastructure.unit_of_work import UnitOfWork
@@ -34,6 +38,9 @@ class InfrastructureContainer(containers.DeclarativeContainer):
     )
     catalog_client = providers.Singleton[CatalogServiceClient](CatalogServiceClient)
     payments_client = providers.Singleton[PaymentsServiceClient](PaymentsServiceClient)
+    notifications_client = providers.Singleton[NotificationsServiceClient](
+        NotificationsServiceClient
+    )
     kafka_producer = providers.Singleton[KafkaProducer](
         KafkaProducer,
         config.KAFKA_BOOTSTRAP_SERVERS,

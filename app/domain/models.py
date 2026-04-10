@@ -20,6 +20,16 @@ class OrderStatusEnum(StrEnum):
         }
         return mapping.get(payment_status)
 
+    @classmethod
+    def from_event_type(cls, payment_status: str) -> OrderStatusEnum:
+        mapping = {
+            "ORDER.CREATED": cls.NEW,
+            "ORDER.PAID": cls.PAID,
+            "ORDER.SHIPPED": cls.SHIPPED,
+            "ORDER.CANCELLED": cls.CANCELLED,
+        }
+        return mapping.get(payment_status)
+
 
 class PaymentStatusEnum(StrEnum):
     PENDING = "PENDING"
@@ -28,9 +38,18 @@ class PaymentStatusEnum(StrEnum):
 
 
 class EventTypeEnum(StrEnum):
+    CREATED = "ORDER.CREATED"
     PAID = "ORDER.PAID"
     SHIPPED = "ORDER.SHIPPED"
     CANCELLED = "ORDER.CANCELLED"
+
+    @classmethod
+    def from_payment_status(cls, payment_status: str) -> EventTypeEnum:
+        mapping = {
+            "succeeded": cls.PAID,
+            "failed": cls.CANCELLED,
+        }
+        return mapping.get(payment_status)
 
 
 class OutboxStatusEnum(StrEnum):

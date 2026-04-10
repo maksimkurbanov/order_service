@@ -61,7 +61,7 @@ class BaseRepository(ABC):
         )
         stmt = (
             insert(self._table_name)
-            .values(**obj.model_dump(exclude_unset=True))
+            .values(**obj.model_dump())
             .returning(self._table_name)
         )
         result = await self._session.execute(stmt)
@@ -83,7 +83,7 @@ class BaseRepository(ABC):
 
         log.debug(
             "Updating %s record with Primary Key(s): %s with data: %s",
-            self._table_name.__name__,
+            self._domain_model.__name__,
             pk_values,
             obj_update_data,
         )
@@ -101,7 +101,7 @@ class BaseRepository(ABC):
     async def get_by_id(self, target_id: tuple) -> DomainModel:
         log.debug(
             "Getting record from %s with Primary Key(s): %s",
-            self._table_name.__name__,
+            self._domain_model.__name__,
             target_id,
         )
         target_ids = []
@@ -112,13 +112,13 @@ class BaseRepository(ABC):
         stmt = select(self._table_name).filter(*target_ids)
         result = await self._session.execute(stmt)
         obj = self._construct(result.scalars().first())
-        log.debug("Result for get_by_id: %s", obj)
+        log.debug("Result for %s get_by_id: %s", self._domain_model.__name__, obj)
         return obj
 
     async def get_by_idempotency_key(self, idempotency_key: str) -> DomainModel:
         log.debug(
             "Getting record from %s with idempotency key: %s",
-            self._table_name.__name__,
+            self._domain_model.__name__,
             idempotency_key,
         )
         stmt = select(self._table_name).filter(
@@ -134,7 +134,7 @@ class BaseRepository(ABC):
         target_ids: list[tuple],
         order_by: str,
         limit: int = 50,
-    ) -> Sequence[DomainModel]:
+    ) -> dict[Any, DomainModel]:
         """
         Fetch all records satisfying provided args and kwargs filtering,
         with exclusive lock on selected rows, while skipping already
@@ -158,9 +158,23 @@ class BaseRepository(ABC):
             stmt = stmt.order_by(order_col)
 
         result = await self._session.execute(stmt)
-        objs = tuple(self._construct(row) for row in result.scalars().all())
-        log.debug("Result for get_many_with_lock: %s", objs)
-        return objs
+        rows = result.scalars().all()
+
+        result_dict = {}
+        for row in rows:
+            obj = self._construct(row)
+            if len(pk_cols) == 1:
+                pk_key = getattr(obj, pk_cols[0].name)
+            else:
+                pk_key = tuple(getattr(obj, col.name) for col in pk_cols)
+            result_dict[pk_key] = obj
+
+        log.debug(
+            "Result for %s get_many_with_lock: %s",
+            self._domain_model.__name__,
+            result_dict,
+        )
+        return result_dict
 
 
 class OrderRepository(BaseRepository):
@@ -169,7 +183,7 @@ class OrderRepository(BaseRepository):
         quantity: int
         item_id: UUID
         idempotency_key: str | UUID | None = None
-        status: OrderStatusEnum
+        status: OrderStatusEnum = OrderStatusEnum.NEW
 
         @field_validator("idempotency_key", mode="before")
         @classmethod
@@ -191,7 +205,7 @@ class PaymentRepository(BaseRepository):
         user_id: UUID
         order_id: UUID
         amount: str
-        status: PaymentStatusEnum
+        status: PaymentStatusEnum = PaymentStatusEnum.PENDING
         idempotency_key: UUID | str | None
 
         @field_validator("status", mode="before")
@@ -228,11 +242,12 @@ class OutboxRepository(BaseRepository):
         order_id: UUID
         item_id: UUID
         quantity: int
-        status: OutboxStatusEnum
-        retry_count: int
+        status: OutboxStatusEnum = OutboxStatusEnum.PENDING
+        retry_count: int = 0
 
     class UpdateDTO(BaseModel):
-        status: OutboxStatusEnum
+        event_type: EventTypeEnum = None
+        status: OutboxStatusEnum = None
 
     def _get_table_name(self) -> ORMModel:
         return OutboxTable
@@ -257,8 +272,8 @@ class InboxRepository(BaseRepository):
         item_id: UUID
         quantity: int
         payload: dict
-        status: InboxStatusEnum
-        retry_count: int
+        status: InboxStatusEnum = InboxStatusEnum.PENDING
+        retry_count: int = 0
 
         @model_validator(mode="before")
         @classmethod

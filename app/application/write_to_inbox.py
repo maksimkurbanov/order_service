@@ -1,6 +1,8 @@
 from uuid import UUID
 
-from app.domain.models import EventTypeEnum, InboxStatusEnum
+import asyncpg
+
+from app.domain.models import EventTypeEnum
 from app.infrastructure.kafka_consumer import KafkaConsumer
 from app.infrastructure.repositories import InboxRepository
 from app.infrastructure.unit_of_work import UnitOfWork
@@ -30,27 +32,17 @@ class WriteToInboxUseCase:
                     return
 
                 log.info("Handling incoming message: %s", message)
-                inc_event_type = message.value["event_type"].upper()
-                existing_msg = await uow.inbox.get_by_id(
-                    (
-                        message.value["order_id"],
-                        message.value["item_id"],
-                        message.value["quantity"],
+                await uow.inbox.create(
+                    InboxRepository.CreateDTO(
+                        **message.value,
                     )
                 )
-                if existing_msg and inc_event_type != existing_msg.event_type:
-                    await uow.inbox.update(
-                        existing_msg,
-                        InboxRepository.UpdateDTO(event_type=inc_event_type),
-                    )
-                if not existing_msg:
-                    await uow.inbox.create(
-                        InboxRepository.CreateDTO(
-                            **message.value,
-                            status=InboxStatusEnum.PENDING,
-                            retry_count=0,
-                        )
-                    )
                 await uow.commit()
             except Exception as e:
+                if isinstance(e, asyncpg.UniqueViolationError):
+                    log.info(
+                        "Message with id %s %s already exists, skipping creation",
+                        message.value.order_id,
+                        message.value.event_type,
+                    )
                 log.error("Error while handling incoming message: %s", e)

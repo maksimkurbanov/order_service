@@ -5,9 +5,16 @@ from pydantic import BaseModel, Field
 from app.application.exceptions import (
     OperationFailedError,
 )
-from app.domain.models import OrderStatusEnum, Order
-from app.infrastructure.http_clients import CatalogServiceClient, PaymentsServiceClient
-from app.infrastructure.repositories import OrderRepository, PaymentRepository
+from app.domain.models import OrderStatusEnum, Order, EventTypeEnum
+from app.infrastructure.http_clients import (
+    CatalogServiceClient,
+    PaymentsServiceClient,
+)
+from app.infrastructure.repositories import (
+    OrderRepository,
+    PaymentRepository,
+    OutboxRepository,
+)
 from app.infrastructure.unit_of_work import UnitOfWork
 from app.utils import logging
 
@@ -62,8 +69,14 @@ class CreateOrderUseCase:
 
             try:
                 new_order = await uow.orders.create(
-                    OrderRepository.CreateDTO(
-                        **order.model_dump(), status=OrderStatusEnum.NEW
+                    OrderRepository.CreateDTO(**order.model_dump())
+                )
+                await uow.outbox.create(
+                    OutboxRepository.CreateDTO(
+                        order_id=new_order.id,
+                        event_type=EventTypeEnum.CREATED,
+                        item_id=new_order.item_id,
+                        quantity=new_order.quantity,
                     )
                 )
                 amount = f"{(order.quantity * item.price):.2f}"
@@ -77,6 +90,14 @@ class CreateOrderUseCase:
                 await uow.orders.update(
                     new_order,
                     OrderRepository.UpdateDTO(status=OrderStatusEnum.CANCELLED),
+                )
+                await uow.outbox.create(
+                    OutboxRepository.CreateDTO(
+                        event_type=EventTypeEnum.CANCELLED,
+                        order_id=new_order.id,
+                        item_id=new_order.item_id,
+                        quantity=new_order.quantity,
+                    )
                 )
                 log.error("Failed to create order: %s", str(e))
                 raise

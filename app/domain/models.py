@@ -21,14 +21,14 @@ class OrderStatusEnum(StrEnum):
         return mapping.get(payment_status)
 
     @classmethod
-    def from_event_type(cls, payment_status: str) -> OrderStatusEnum:
+    def from_event_type(cls, event_type: str) -> OrderStatusEnum:
         mapping = {
             "ORDER.CREATED": cls.NEW,
             "ORDER.PAID": cls.PAID,
             "ORDER.SHIPPED": cls.SHIPPED,
             "ORDER.CANCELLED": cls.CANCELLED,
         }
-        return mapping.get(payment_status)
+        return mapping.get(event_type.upper())
 
 
 class PaymentStatusEnum(StrEnum):

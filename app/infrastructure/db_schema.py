@@ -16,8 +16,7 @@ from sqlalchemy import (
     Index,
     JSON,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, relationship
-from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.domain.models import (
     OrderStatusEnum,

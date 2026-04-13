@@ -86,6 +86,7 @@ class CreateOrderUseCase:
                         **payment.model_dump(exclude={"created_at"})
                     )
                 )
+                await uow.commit()
             except Exception as e:
                 await uow.orders.update(
                     new_order,
@@ -93,14 +94,13 @@ class CreateOrderUseCase:
                 )
                 await uow.outbox.create(
                     OutboxRepository.CreateDTO(
-                        event_type=EventTypeEnum.CANCELLED,
                         order_id=new_order.id,
+                        event_type=EventTypeEnum.CANCELLED,
                         item_id=new_order.item_id,
                         quantity=new_order.quantity,
                     )
                 )
                 log.error("Failed to create order: %s", str(e))
-                raise
-            finally:
                 await uow.commit()
+                raise
             return new_order

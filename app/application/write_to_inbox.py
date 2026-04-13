@@ -1,6 +1,6 @@
 from uuid import UUID
 
-import asyncpg
+from sqlalchemy.exc import IntegrityError
 
 from app.domain.models import EventTypeEnum
 from app.infrastructure.kafka_consumer import KafkaConsumer
@@ -39,7 +39,7 @@ class WriteToInboxUseCase:
                 )
                 await uow.commit()
             except Exception as e:
-                if isinstance(e, asyncpg.UniqueViolationError):
+                if isinstance(e, IntegrityError):
                     log.info(
                         "Message with id %s %s already exists, skipping creation",
                         message.value.order_id,

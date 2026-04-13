@@ -38,11 +38,13 @@ class ProcessInboxUseCase:
                             message,
                             InboxRepository.UpdateDTO(status=InboxStatusEnum.PROCESSED),
                         )
-                        await uow.orders.update(
-                            order,
-                            OrderRepository.UpdateDTO(
-                                status=OrderStatusEnum(
-                                    message.event_type.split(".")[1]
+                        (
+                            await uow.orders.update(
+                                order,
+                                OrderRepository.UpdateDTO(
+                                    status=OrderStatusEnum.from_event_type(
+                                        message.event_type
+                                    ),
                                 ),
                             ),
                         )
@@ -59,5 +61,4 @@ class ProcessInboxUseCase:
                             "Inbox message processing failed: %s",
                             e,
                         )
-                        raise
             await uow.commit()

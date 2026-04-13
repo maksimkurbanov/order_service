@@ -1,3 +1,5 @@
+from abc import abstractmethod, ABC
+from urllib.parse import urljoin, urlsplit, urlunsplit
 from datetime import datetime
 from uuid import UUID, uuid4
 
@@ -50,35 +52,40 @@ class NotificationResponse(BaseModel):
     created_at: datetime
 
 
-class CapashinoServiceClient:
+class CapashinoServiceClient(ABC):
     def __init__(self):
         self._client = httpx.AsyncClient(
             timeout=10,
             headers={"x-api-key": settings.LMS_API_KEY},
             event_hooks={"request": [self._log_request]},
         )
-        self._base_url = f"{settings.CAPASHINO_URL.rstrip('/')}/api"
-        self._name = ""
+        self._name = self._service_name()
+        self._base_url = urljoin(settings.CAPASHINO_URL + "/", f"api/{self._name}")
 
-    def _build_url(self, path_params: tuple = "") -> str:
+    @abstractmethod
+    def _service_name(self) -> str:
+        pass
+
+    def _build_url(self, path_params: tuple | str = "") -> str:
         """Build and return Capashino Service API URL string"""
-        if path_params:
-            path_params = "/" + "/".join(map(str, path_params))
-        return f"{self._base_url}/{self._name}{path_params}"
+        path_params_str = "/".join(map(str, path_params))
+        return urljoin(self._base_url + "/", path_params_str).rstrip("/")
 
     async def _log_request(self, request: Request) -> None:
         """Log request to Capashino Service API"""
         log.debug(
-            f"""Request URL: {request.url}
-            Request Headers: {request.headers}
-            Request Body: {request.content.decode()}"""
+            """Request URL: %s
+            Request Headers: %s
+            Request Body: %s""",
+            request.url,
+            request.headers,
+            request.content.decode(),
         )
 
 
 class CatalogServiceClient(CapashinoServiceClient):
-    def __init__(self):
-        super().__init__()
-        self._name = "catalog"
+    def _service_name(self) -> str:
+        return "catalog"
 
     async def get_item(self, item_id: UUID) -> Item:
         response = await self._client.get(self._build_url(("items", item_id)))
@@ -92,13 +99,14 @@ class CatalogServiceClient(CapashinoServiceClient):
 
 
 class PaymentsServiceClient(CapashinoServiceClient):
-    def __init__(self):
-        super().__init__()
-        self._name = "payments"
+    def _service_name(self) -> str:
+        return "payments"
 
-    @staticmethod
-    def _gen_callback_url() -> str:
-        return f"http://{settings.CALLBACK_URL}/api/orders/payment-callback"
+    def _gen_callback_url(self) -> str:
+        callback_base_url = urlunsplit(
+            urlsplit("//" + settings.CALLBACK_URL, scheme="http")
+        )
+        return urljoin(callback_base_url + "/", "api/orders/payment-callback")
 
     async def create_payment(self, order, amount: str) -> PaymentResponse:
         response = await self._client.post(
@@ -117,9 +125,8 @@ class PaymentsServiceClient(CapashinoServiceClient):
 
 
 class NotificationsServiceClient(CapashinoServiceClient):
-    def __init__(self):
-        super().__init__()
-        self._name = "notifications"
+    def _service_name(self) -> str:
+        return "notifications"
 
     def _build_message(self, status: str):
         msg_dict = {
